@@ -6,18 +6,18 @@ set dotenv-load
 set dotenv-filename := "variables.env"
 
 VMRUN        := env_var("VMRUN")
+VMWARE_GUI   := env_var("VMWARE_BIN") + "/vmware.exe"
 VDISKMANAGER := env_var("VDISKMANAGER")
 VM_BASE_WSL  := env_var("VM_BASE_WSL")
 ISO_LOCAL    := env_var("ISO_LOCAL")
 ISO_URL      := env_var("ISO_URL")
 
-# WSL paths — used for file operations (cp, ls, test -f …)
+# WSL paths — used for file operations (cp, ls, test -d …)
 HEAD_VMX_WSL  := VM_BASE_WSL / "hpc-dev-head/hpc-dev-head.vmx"
 CPU01_VMX_WSL := VM_BASE_WSL / "hpc-dev-cpu01/hpc-dev-cpu01.vmx"
 CPU02_VMX_WSL := VM_BASE_WSL / "hpc-dev-cpu02/hpc-dev-cpu02.vmx"
 
-# Windows paths — used when calling vmrun.exe / vdiskmanager.exe
-# Converted at recipe time via: wslpath -w "<wsl-path>"
+# Windows paths — converted at recipe time via: wslpath -w "<wsl-path>"
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 
@@ -109,20 +109,20 @@ provision: iso-download disks-create deploy
 
 # ── VM lifecycle ─────────────────────────────────────────────────────────────
 
-# Start head node (GUI) — non-blocking
+# Start head node — opens VMware Workstation GUI in user session
 start-head:
     #!/usr/bin/env bash
     set -euo pipefail
     VMX="{{HEAD_VMX_WSL}}"
-        if [ -d "${VMX}.lck" ]; then
-            echo ">>> hpc-dev-head is already running (lock file present), skipping."
+    if [ -d "${VMX}.lck" ]; then
+        echo ">>> hpc-dev-head is already running (lock file present), skipping."
         exit 0
     fi
-    "{{VMRUN}}" start "$(wslpath -w "$VMX")" gui &
+    "{{VMWARE_GUI}}" "$(wslpath -w "$VMX")" &
     disown
     echo ">>> hpc-dev-head starting..."
 
-# Start compute nodes (GUI) — non-blocking
+# Start compute nodes — opens VMware Workstation GUI in user session
 start-nodes:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -131,7 +131,7 @@ start-nodes:
         if [ -d "${VMX}.lck" ]; then
             echo ">>> $NAME is already running (lock file present), skipping."
         else
-            "{{VMRUN}}" start "$(wslpath -w "$VMX")" gui &
+            "{{VMWARE_GUI}}" "$(wslpath -w "$VMX")" &
             disown
             echo ">>> $NAME starting..."
         fi
