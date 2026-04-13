@@ -114,8 +114,8 @@ start-head:
     #!/usr/bin/env bash
     set -euo pipefail
     VMX="{{HEAD_VMX_WSL}}"
-    if [ -f "${VMX}.lck" ]; then
-        echo ">>> hpc-dev-head is already running (lock file present), skipping."
+        if [ -d "${VMX}.lck" ]; then
+            echo ">>> hpc-dev-head is already running (lock file present), skipping."
         exit 0
     fi
     "{{VMRUN}}" start "$(wslpath -w "$VMX")" gui &
@@ -128,7 +128,7 @@ start-nodes:
     set -euo pipefail
     for VMX in "{{CPU01_VMX_WSL}}" "{{CPU02_VMX_WSL}}"; do
         NAME=$(basename "$VMX" .vmx)
-        if [ -f "${VMX}.lck" ]; then
+        if [ -d "${VMX}.lck" ]; then
             echo ">>> $NAME is already running (lock file present), skipping."
         else
             "{{VMRUN}}" start "$(wslpath -w "$VMX")" gui &
@@ -147,10 +147,19 @@ stop-all:
     "{{VMRUN}}" stop "$(wslpath -w "{{CPU01_VMX_WSL}}")" soft || true
     "{{VMRUN}}" stop "$(wslpath -w "{{CPU02_VMX_WSL}}")" soft || true
 
-# Show running VMs
+# Show VM status (lock-file based — vmrun list cannot track GUI-mode VMs)
 status:
     #!/usr/bin/env bash
-    "{{VMRUN}}" list
+    echo "VM STATUS"
+    echo "========="
+    for VMX in "{{HEAD_VMX_WSL}}" "{{CPU01_VMX_WSL}}" "{{CPU02_VMX_WSL}}"; do
+        NAME=$(basename "$VMX" .vmx)
+        if [ -d "${VMX}.lck" ]; then
+            echo "  [RUNNING]  $NAME"
+        else
+            echo "  [stopped]  $NAME"
+        fi
+    done
 
 # ── Snapshot ─────────────────────────────────────────────────────────────────
 
