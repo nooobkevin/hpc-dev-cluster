@@ -1,0 +1,28 @@
+# ── VMware runtime files (never commit) ──────────────────────────────────────
+*.vmdk
+*.vmem
+*.vmsd
+*.vmss
+*.vmsn
+*.vmxf
+*.nvram
+*.log
+*.lck/
+vmware-*.log
+
+# ── ISO images ───────────────────────────────────────────────────────────────
+*.iso
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*~
+.*.swp
+.vscode/
+.idea/
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+secrets/

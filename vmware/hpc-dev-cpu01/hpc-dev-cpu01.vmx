@@ -1,0 +1,51 @@
+.encoding = "UTF-8"
+config.version = "8"
+virtualHW.version = "21"
+displayName = "hpc-dev-cpu01"
+guestOS = "rhel9-64"
+
+# CPU
+numvcpus = "2"
+cpuid.coresPerSocket = "2"
+
+# RAM
+memsize = "8192"
+
+# Firmware / Boot
+firmware = "efi"
+bios.bootDelay = "3000"
+
+# PXE boot: NIC is slot 32 so EFI sees it first
+ethernet0.pciSlotNumber = "32"
+efi.networkBootProtocol = "PXEv4"
+
+# SCSI Controller
+scsi0.present = "TRUE"
+scsi0.virtualDev = "lsilogic"
+
+# HDD 16GB (swap / scratch - stateless PXE node)
+scsi0:0.present = "TRUE"
+scsi0:0.fileName = "hpc-dev-cpu01.vmdk"
+scsi0:0.deviceType = "scsi-hardDisk"
+
+# NIC - LAN Segment (hpc-lan)
+# e1000e used for broad PXE firmware compatibility
+# pvnID shared with hpc-dev-head NIC2
+ethernet0.present = "TRUE"
+ethernet0.connectionType = "pvn"
+ethernet0.pvnID = "52 02 60 b4 b8 41 35 a3-55 e1 a2 3c 4f 11 d2 8c"
+ethernet0.virtualDev = "e1000e"
+ethernet0.wakeOnPcktRcv = "TRUE"
+ethernet0.addressType = "generated"
+
+# USB
+usb.present = "TRUE"
+
+# Sound (disabled)
+sound.present = "FALSE"
+
+# Misc
+tools.syncTime = "FALSE"
+powerType.powerOff = "soft"
+powerType.reset = "soft"
+powerType.suspend = "soft"
