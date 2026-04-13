@@ -2,7 +2,8 @@
 # Run `just` to see available commands.
 # First-time setup: `just bootstrap` installs just itself system-wide.
 
-set dotenv-load  # auto-load variables.env
+set dotenv-load
+set dotenv-filename := "variables.env"
 
 VMRUN        := env_var("VMRUN")
 VDISKMANAGER := env_var("VDISKMANAGER")
