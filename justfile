@@ -118,9 +118,11 @@ start-head:
         echo ">>> hpc-dev-head is already running (lock file present), skipping."
         exit 0
     fi
-    "{{VMWARE_GUI}}" "$(wslpath -w "$VMX")" &
+    WIN_VMX="$(wslpath -w "$VMX")"
+    # Use explorer.exe to open the VMX — guaranteed to open in the current user desktop session
+    explorer.exe "$WIN_VMX" &
     disown
-    echo ">>> hpc-dev-head starting..."
+    echo ">>> hpc-dev-head: VMware Workstation opening..."
 
 # Start compute nodes — opens VMware Workstation GUI in user session
 start-nodes:
@@ -131,9 +133,10 @@ start-nodes:
         if [ -d "${VMX}.lck" ]; then
             echo ">>> $NAME is already running (lock file present), skipping."
         else
-            "{{VMWARE_GUI}}" "$(wslpath -w "$VMX")" &
+            WIN_VMX="$(wslpath -w "$VMX")"
+            explorer.exe "$WIN_VMX" &
             disown
-            echo ">>> $NAME starting..."
+            echo ">>> $NAME: VMware Workstation opening..."
         fi
     done
 
