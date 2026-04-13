@@ -11,9 +11,13 @@ VM_BASE_WSL  := env_var("VM_BASE_WSL")
 ISO_LOCAL    := env_var("ISO_LOCAL")
 ISO_URL      := env_var("ISO_URL")
 
-HEAD_VMX  := VM_BASE_WSL / "hpc-dev-head/hpc-dev-head.vmx"
-CPU01_VMX := VM_BASE_WSL / "hpc-dev-cpu01/hpc-dev-cpu01.vmx"
-CPU02_VMX := VM_BASE_WSL / "hpc-dev-cpu02/hpc-dev-cpu02.vmx"
+# WSL paths — used for file operations (cp, ls, test -f …)
+HEAD_VMX_WSL  := VM_BASE_WSL / "hpc-dev-head/hpc-dev-head.vmx"
+CPU01_VMX_WSL := VM_BASE_WSL / "hpc-dev-cpu01/hpc-dev-cpu01.vmx"
+CPU02_VMX_WSL := VM_BASE_WSL / "hpc-dev-cpu02/hpc-dev-cpu02.vmx"
+
+# Windows paths — used when calling vmrun.exe / vdiskmanager.exe
+# Converted at recipe time via: wslpath -w "<wsl-path>"
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 
@@ -55,29 +59,29 @@ disks-create: _disk-head _disk-cpu01 _disk-cpu02
 _disk-head:
     #!/usr/bin/env bash
     set -euo pipefail
-    VMDK="{{VM_BASE_WSL}}/hpc-dev-head/hpc-dev-head.vmdk"
-    if [ -f "$VMDK" ]; then echo ">>> head VMDK exists, skipping."; exit 0; fi
-    mkdir -p "$(dirname "$VMDK")"
+    VMDK_WSL="{{VM_BASE_WSL}}/hpc-dev-head/hpc-dev-head.vmdk"
+    if [ -f "$VMDK_WSL" ]; then echo ">>> head VMDK exists, skipping."; exit 0; fi
+    mkdir -p "$(dirname "$VMDK_WSL")"
     "{{VDISKMANAGER}}" -c -s 160GB -a lsilogic -t 0 \
-        "C:\\Users\\nooob\\Documents\\Virtual Machines\\hpc-dev-head\\hpc-dev-head.vmdk"
+        "$(wslpath -w "$VMDK_WSL")"
 
 _disk-cpu01:
     #!/usr/bin/env bash
     set -euo pipefail
-    VMDK="{{VM_BASE_WSL}}/hpc-dev-cpu01/hpc-dev-cpu01.vmdk"
-    if [ -f "$VMDK" ]; then echo ">>> cpu01 VMDK exists, skipping."; exit 0; fi
-    mkdir -p "$(dirname "$VMDK")"
+    VMDK_WSL="{{VM_BASE_WSL}}/hpc-dev-cpu01/hpc-dev-cpu01.vmdk"
+    if [ -f "$VMDK_WSL" ]; then echo ">>> cpu01 VMDK exists, skipping."; exit 0; fi
+    mkdir -p "$(dirname "$VMDK_WSL")"
     "{{VDISKMANAGER}}" -c -s 16GB -a lsilogic -t 0 \
-        "C:\\Users\\nooob\\Documents\\Virtual Machines\\hpc-dev-cpu01\\hpc-dev-cpu01.vmdk"
+        "$(wslpath -w "$VMDK_WSL")"
 
 _disk-cpu02:
     #!/usr/bin/env bash
     set -euo pipefail
-    VMDK="{{VM_BASE_WSL}}/hpc-dev-cpu02/hpc-dev-cpu02.vmdk"
-    if [ -f "$VMDK" ]; then echo ">>> cpu02 VMDK exists, skipping."; exit 0; fi
-    mkdir -p "$(dirname "$VMDK")"
+    VMDK_WSL="{{VM_BASE_WSL}}/hpc-dev-cpu02/hpc-dev-cpu02.vmdk"
+    if [ -f "$VMDK_WSL" ]; then echo ">>> cpu02 VMDK exists, skipping."; exit 0; fi
+    mkdir -p "$(dirname "$VMDK_WSL")"
     "{{VDISKMANAGER}}" -c -s 16GB -a lsilogic -t 0 \
-        "C:\\Users\\nooob\\Documents\\Virtual Machines\\hpc-dev-cpu02\\hpc-dev-cpu02.vmdk"
+        "$(wslpath -w "$VMDK_WSL")"
 
 # ── VMX deploy ───────────────────────────────────────────────────────────────
 
@@ -86,15 +90,15 @@ deploy: _deploy-head _deploy-cpu01 _deploy-cpu02
     @echo ">>> All VMX files deployed."
 
 _deploy-head:
-    cp vmware/hpc-dev-head/hpc-dev-head.vmx "{{VM_BASE_WSL}}/hpc-dev-head/hpc-dev-head.vmx"
+    cp vmware/hpc-dev-head/hpc-dev-head.vmx "{{HEAD_VMX_WSL}}"
     @echo ">>> hpc-dev-head.vmx deployed."
 
 _deploy-cpu01:
-    cp vmware/hpc-dev-cpu01/hpc-dev-cpu01.vmx "{{VM_BASE_WSL}}/hpc-dev-cpu01/hpc-dev-cpu01.vmx"
+    cp vmware/hpc-dev-cpu01/hpc-dev-cpu01.vmx "{{CPU01_VMX_WSL}}"
     @echo ">>> hpc-dev-cpu01.vmx deployed."
 
 _deploy-cpu02:
-    cp vmware/hpc-dev-cpu02/hpc-dev-cpu02.vmx "{{VM_BASE_WSL}}/hpc-dev-cpu02/hpc-dev-cpu02.vmx"
+    cp vmware/hpc-dev-cpu02/hpc-dev-cpu02.vmx "{{CPU02_VMX_WSL}}"
     @echo ">>> hpc-dev-cpu02.vmx deployed."
 
 # ── Full provision (first-time setup) ────────────────────────────────────────
@@ -107,40 +111,49 @@ provision: iso-download disks-create deploy
 
 # Start head node (GUI)
 start-head:
-    "{{VMRUN}}" start "{{HEAD_VMX}}" gui
+    #!/usr/bin/env bash
+    set -euo pipefail
+    "{{VMRUN}}" start "$(wslpath -w "{{HEAD_VMX_WSL}}")" gui
 
 # Start compute nodes (GUI)
 start-nodes:
-    "{{VMRUN}}" start "{{CPU01_VMX}}" gui
-    "{{VMRUN}}" start "{{CPU02_VMX}}" gui
+    #!/usr/bin/env bash
+    set -euo pipefail
+    "{{VMRUN}}" start "$(wslpath -w "{{CPU01_VMX_WSL}}")" gui
+    "{{VMRUN}}" start "$(wslpath -w "{{CPU02_VMX_WSL}}")" gui
 
 # Start all VMs
 start-all: start-head start-nodes
 
 # Stop all VMs gracefully
 stop-all:
-    -"{{VMRUN}}" stop "{{HEAD_VMX}}"  soft
-    -"{{VMRUN}}" stop "{{CPU01_VMX}}" soft
-    -"{{VMRUN}}" stop "{{CPU02_VMX}}" soft
+    #!/usr/bin/env bash
+    "{{VMRUN}}" stop "$(wslpath -w "{{HEAD_VMX_WSL}}")"  soft || true
+    "{{VMRUN}}" stop "$(wslpath -w "{{CPU01_VMX_WSL}}")" soft || true
+    "{{VMRUN}}" stop "$(wslpath -w "{{CPU02_VMX_WSL}}")" soft || true
 
 # Show running VMs
 status:
+    #!/usr/bin/env bash
     "{{VMRUN}}" list
 
 # ── Snapshot ─────────────────────────────────────────────────────────────────
 
 # Take a named snapshot of all VMs  (usage: just snapshot "after-ww-install")
 snapshot name:
-    "{{VMRUN}}" snapshot "{{HEAD_VMX}}"  "{{name}}"
-    "{{VMRUN}}" snapshot "{{CPU01_VMX}}" "{{name}}"
-    "{{VMRUN}}" snapshot "{{CPU02_VMX}}" "{{name}}"
-    @echo ">>> Snapshot '{{name}}' taken on all VMs."
+    #!/usr/bin/env bash
+    set -euo pipefail
+    "{{VMRUN}}" snapshot "$(wslpath -w "{{HEAD_VMX_WSL}}")"  "{{name}}"
+    "{{VMRUN}}" snapshot "$(wslpath -w "{{CPU01_VMX_WSL}}")" "{{name}}"
+    "{{VMRUN}}" snapshot "$(wslpath -w "{{CPU02_VMX_WSL}}")" "{{name}}"
+    echo ">>> Snapshot '{{name}}' taken on all VMs."
 
 # List snapshots for all VMs
 snapshot-list:
-    @echo "=== hpc-dev-head ==="
-    "{{VMRUN}}" listSnapshots "{{HEAD_VMX}}"
-    @echo "=== hpc-dev-cpu01 ==="
-    "{{VMRUN}}" listSnapshots "{{CPU01_VMX}}"
-    @echo "=== hpc-dev-cpu02 ==="
-    "{{VMRUN}}" listSnapshots "{{CPU02_VMX}}"
+    #!/usr/bin/env bash
+    echo "=== hpc-dev-head ==="
+    "{{VMRUN}}" listSnapshots "$(wslpath -w "{{HEAD_VMX_WSL}}")"
+    echo "=== hpc-dev-cpu01 ==="
+    "{{VMRUN}}" listSnapshots "$(wslpath -w "{{CPU01_VMX_WSL}}")"
+    echo "=== hpc-dev-cpu02 ==="
+    "{{VMRUN}}" listSnapshots "$(wslpath -w "{{CPU02_VMX_WSL}}")"
