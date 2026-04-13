@@ -109,18 +109,33 @@ provision: iso-download disks-create deploy
 
 # ── VM lifecycle ─────────────────────────────────────────────────────────────
 
-# Start head node (GUI)
+# Start head node (GUI) — non-blocking
 start-head:
     #!/usr/bin/env bash
     set -euo pipefail
-    "{{VMRUN}}" start "$(wslpath -w "{{HEAD_VMX_WSL}}")" gui
+    VMX="{{HEAD_VMX_WSL}}"
+    if [ -f "${VMX}.lck" ]; then
+        echo ">>> hpc-dev-head is already running (lock file present), skipping."
+        exit 0
+    fi
+    "{{VMRUN}}" start "$(wslpath -w "$VMX")" gui &
+    disown
+    echo ">>> hpc-dev-head starting..."
 
-# Start compute nodes (GUI)
+# Start compute nodes (GUI) — non-blocking
 start-nodes:
     #!/usr/bin/env bash
     set -euo pipefail
-    "{{VMRUN}}" start "$(wslpath -w "{{CPU01_VMX_WSL}}")" gui
-    "{{VMRUN}}" start "$(wslpath -w "{{CPU02_VMX_WSL}}")" gui
+    for VMX in "{{CPU01_VMX_WSL}}" "{{CPU02_VMX_WSL}}"; do
+        NAME=$(basename "$VMX" .vmx)
+        if [ -f "${VMX}.lck" ]; then
+            echo ">>> $NAME is already running (lock file present), skipping."
+        else
+            "{{VMRUN}}" start "$(wslpath -w "$VMX")" gui &
+            disown
+            echo ">>> $NAME starting..."
+        fi
+    done
 
 # Start all VMs
 start-all: start-head start-nodes
